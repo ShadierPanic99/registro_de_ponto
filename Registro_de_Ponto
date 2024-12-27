@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Ponto</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <h1>Registro de Ponto</h1>
+
+    <div>
+        <label for="monthSelect">Selecione o Mês: </label>
+        <select id="monthSelect" onchange="updateTable()">
+            <option value="1">Janeiro</option>
+            <option value="2">Fevereiro</option>
+            <option value="3">Março</option>
+            <option value="4">Abril</option>
+            <option value="5">Maio</option>
+            <option value="6">Junho</option>
+            <option value="7">Julho</option>
+            <option value="8">Agosto</option>
+            <option value="9">Setembro</option>
+            <option value="10">Outubro</option>
+            <option value="11">Novembro</option>
+            <option value="12">Dezembro</option>
+        </select>
+    </div>
+
+    <button class="mark-day-off" onclick="markDayOff()">Marcar Folga</button>
+    <button class="export-btn" onclick="exportToCSV()">Exportar para CSV</button>
+    <button class="import-btn">
+        <input type="file" id="importCSV" onchange="importCSV(event)" style="display:none;">
+        <span onclick="document.getElementById('importCSV').click()">Importar de CSV</span>
+    </button>
+
+    <table id="timeSheet">
+        <thead>
+            <tr>
+                <th>Dia</th>
+                <th>Feriado / Domingo</th>
+                <th>Entrada</th>
+                <th>Início do Almoço</th>
+                <th>Fim do Almoço</th>
+                <th>Saída</th>
+                <th>Horas Trabalhadas</th>
+                <th>Horas Extras</th>
+            </tr>
+        </thead>
+        <tbody id="timeSheetBody">
+            <!-- Linhas serão adicionadas aqui -->
+        </tbody>
+        <tfoot>
+            <tr class="totals-row">
+                <td colspan="6">Totais:</td>
+                <td id="totalWorked">00:00:00</td>
+                <td id="totalOvertime">00:00:00</td>
+            </tr>
+            <tr class="totals-row">
+                <td colspan="6">Salário Mensal (R$):</td>
+                <td colspan="2">
+                    <input type="number" id="monthlySalary" placeholder="Digite o salário"
+                        onchange="calculateEarnings()" style="width: 100%; padding: 5px;">
+                </td>
+            </tr>
+            <tr class="totals-row">
+                <td colspan="6">Total a Receber (R$):</td>
+                <td colspan="2" id="totalEarnings">R$ 0,00</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
