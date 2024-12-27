@@ -1,0 +1,68 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    padding: 0;
+    background-color: #f4f4f9;
+    color: #333;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+table,
+th,
+td {
+    border: 1px solid #ccc;
+}
+
+th,
+td {
+    padding: 10px;
+    text-align: center;
+}
+
+th {
+    background-color: #007BFF;
+    color: white;
+}
+
+.export-btn,
+.import-btn,
+.mark-holiday,
+.mark-day-off {
+    margin: 10px 5px;
+    padding: 10px 20px;
+    background-color: #17a2b8;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+.export-btn:hover,
+.import-btn:hover,
+.mark-holiday:hover,
+.mark-day-off:hover {
+    background-color: #138496;
+}
+
+.totals-row {
+    font-weight: bold;
+    background-color: #f4f4f9;
+}
+
+.holiday-row {
+    background-color: #ffd6d6;
+}
+
+.day-off-row {
+    background-color: #ffe6e6;
+}
+
+input[readonly] {
+    background-color: #e9ecef;
+    cursor: not-allowed;
+}
