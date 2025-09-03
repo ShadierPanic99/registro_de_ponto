@@ -1,178 +1,219 @@
-window.onload = function () {
-    updateTable();
-};
-
-function updateTable() {
-    const month = document.getElementById('monthSelect').value;
-    const daysInMonth = new Date(2024, month, 0).getDate(); // Obtém o número de dias do mês
-    const tableBody = document.getElementById('timeSheetBody');
-    tableBody.innerHTML = ''; // Limpa a tabela
-
-    for (let day = 1; day <= daysInMonth; day++) {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${day}</td>
-            <td><input type="checkbox" onchange="toggleHoliday(this)"></td>
-            <td><input type="time" onchange="calculateHours(this)"></td>
-            <td><input type="time" onchange="calculateHours(this)"></td>
-            <td><input type="time" onchange="calculateHours(this)"></td>
-            <td><input type="time" onchange="calculateHours(this)"></td>
-            <td class="hours-worked">00:00:00</td>
-            <td class="extra-hours">00:00:00</td>
-        `;
-        tableBody.appendChild(row);
+class JogoDaVelha {
+    constructor() {
+        this.board = ['', '', '', '', '', '', '', '', ''];
+        this.currentPlayer = 'X';
+        this.gameActive = true;
+        this.score = {
+            x: 0,
+            o: 0,
+            draw: 0
+        };
+        
+        this.winningConditions = [
+            [0, 1, 2],
+            [3, 4, 5],
+            [6, 7, 8],
+            [0, 3, 6],
+            [1, 4, 7],
+            [2, 5, 8],
+            [0, 4, 8],
+            [2, 4, 6]
+        ];
+        
+        this.initializeGame();
     }
-}
-
-function toggleHoliday(checkbox) {
-    const row = checkbox.parentElement.parentElement;
-    row.classList.toggle('holiday-row', checkbox.checked);
-    calculateHours(row.querySelector('input[type="time"]'));
-}
-
-function markDayOff() {
-    const selectedRow = prompt("Digite o número do dia para marcar como folga (1 a 31):");
-    const tableBody = document.getElementById('timeSheetBody');
-    const rows = Array.from(tableBody.getElementsByTagName('tr'));
-
-    if (selectedRow > 0 && selectedRow <= rows.length) {
-        const row = rows[selectedRow - 1];
-        row.classList.add('day-off-row');
-        row.querySelectorAll('input[type="time"]').forEach(input => {
-            input.value = '';
-            input.disabled = true;
+    
+    initializeGame() {
+        this.cells = document.querySelectorAll('.cell');
+        this.statusElement = document.getElementById('status');
+        this.resetButton = document.getElementById('reset-btn');
+        this.scoreX = document.getElementById('score-x');
+        this.scoreO = document.getElementById('score-o');
+        this.scoreDraw = document.getElementById('score-draw');
+        
+        this.cells.forEach(cell => {
+            cell.addEventListener('click', this.handleCellClick.bind(this));
         });
-        row.querySelector('.hours-worked').textContent = 'Folga';
-        row.querySelector('.extra-hours').textContent = 'Folga';
-        updateTotals();
-    } else {
-        alert("Número de dia inválido. Por favor, insira um valor entre 1 e 31.");
+        
+        this.resetButton.addEventListener('click', this.resetGame.bind(this));
+        
+        this.updateStatus();
+        this.updateScore();
     }
-}
-
-function calculateHours(input) {
-    const row = input.parentElement.parentElement;
-    const [start, lunchStart, lunchEnd, end] = row.querySelectorAll('input[type="time"]');
-    const workedHoursCell = row.querySelector('.hours-worked');
-    const extraHoursCell = row.querySelector('.extra-hours');
-    const isHoliday = row.querySelector('input[type="checkbox"]').checked;
-
-    if (start.value && lunchStart.value && lunchEnd.value && end.value) {
-        const startTime = new Date(`1970-01-01T${start.value}:00`);
-        const lunchStartTime = new Date(`1970-01-01T${lunchStart.value}:00`);
-        const lunchEndTime = new Date(`1970-01-01T${lunchEnd.value}:00`);
-        const endTime = new Date(`1970-01-01T${end.value}:00`);
-
-        const workBeforeLunch = (lunchStartTime - startTime) / 60000;
-        const workAfterLunch = (endTime - lunchEndTime) / 60000;
-        const totalMinutes = workBeforeLunch + workAfterLunch;
-        const regularMinutes = 8 * 60;
-
-        const workedHours = formatTime(totalMinutes);
-        workedHoursCell.textContent = workedHours;
-
-        let overtimeMinutes = 0;
-        if (totalMinutes > regularMinutes || isHoliday) {
-            const overtimeRate = isHoliday ? 2 : 1.5;
-            overtimeMinutes = (totalMinutes - regularMinutes) * overtimeRate;
-            const overtime = formatTime(overtimeMinutes > 0 ? overtimeMinutes : 0);
-            extraHoursCell.textContent = overtime;
+    
+    handleCellClick(event) {
+        const cell = event.target;
+        const index = parseInt(cell.getAttribute('data-index'));
+        
+        if (this.board[index] !== '' || !this.gameActive) {
+            return;
+        }
+        
+        this.makeMove(index, cell);
+    }
+    
+    makeMove(index, cell) {
+        this.board[index] = this.currentPlayer;
+        cell.textContent = this.currentPlayer;
+        cell.classList.add(this.currentPlayer.toLowerCase());
+        
+        if (this.checkWinner()) {
+            this.gameActive = false;
+            this.highlightWinningCells();
+            this.statusElement.textContent = `Jogador ${this.currentPlayer} venceu!`;
+            this.score[this.currentPlayer.toLowerCase()]++;
+            this.updateScore();
+            this.celebrateWin();
+        } else if (this.checkDraw()) {
+            this.gameActive = false;
+            this.statusElement.textContent = 'Empate!';
+            this.score.draw++;
+            this.updateScore();
         } else {
-            extraHoursCell.textContent = '00:00:00';
+            this.currentPlayer = this.currentPlayer === 'X' ? 'O' : 'X';
+            this.updateStatus();
         }
-        updateTotals();
-    } else {
-        workedHoursCell.textContent = '00:00:00';
-        extraHoursCell.textContent = '00:00:00';
-        updateTotals();
+    }
+    
+    checkWinner() {
+        return this.winningConditions.some(condition => {
+            const [a, b, c] = condition;
+            return this.board[a] && 
+                   this.board[a] === this.board[b] && 
+                   this.board[a] === this.board[c];
+        });
+    }
+    
+    checkDraw() {
+        return this.board.every(cell => cell !== '');
+    }
+    
+    highlightWinningCells() {
+        this.winningConditions.forEach(condition => {
+            const [a, b, c] = condition;
+            if (this.board[a] && 
+                this.board[a] === this.board[b] && 
+                this.board[a] === this.board[c]) {
+                this.cells[a].classList.add('winner');
+                this.cells[b].classList.add('winner');
+                this.cells[c].classList.add('winner');
+            }
+        });
+    }
+    
+    celebrateWin() {
+        // Adiciona um pequeno efeito de celebração
+        setTimeout(() => {
+            const winnerCells = document.querySelectorAll('.winner');
+            winnerCells.forEach(cell => {
+                cell.style.animation = 'winner-pulse 0.6s ease-in-out infinite';
+            });
+        }, 100);
+    }
+    
+    updateStatus() {
+        if (this.gameActive) {
+            this.statusElement.textContent = `Vez do jogador ${this.currentPlayer}`;
+        }
+    }
+    
+    updateScore() {
+        this.scoreX.textContent = this.score.x;
+        this.scoreO.textContent = this.score.o;
+        this.scoreDraw.textContent = this.score.draw;
+    }
+    
+    resetGame() {
+        this.board = ['', '', '', '', '', '', '', '', ''];
+        this.currentPlayer = 'X';
+        this.gameActive = true;
+        
+        this.cells.forEach(cell => {
+            cell.textContent = '';
+            cell.className = 'cell';
+            cell.style.animation = '';
+        });
+        
+        this.updateStatus();
+    }
+    
+    resetScore() {
+        this.score = { x: 0, o: 0, draw: 0 };
+        this.updateScore();
     }
 }
 
-function updateTotals() {
-    let totalWorkedMinutes = 0;
-    let totalOvertimeMinutes = 0;
-
-    document.querySelectorAll('.hours-worked').forEach(cell => {
-        if (cell.textContent !== 'Folga') {
-            totalWorkedMinutes += parseTime(cell.textContent);
+// Funcionalidades extras
+document.addEventListener('DOMContentLoaded', function() {
+    const game = new JogoDaVelha();
+    
+    // Adiciona funcionalidade de reset do placar com duplo clique
+    const scoreContainer = document.querySelector('.score');
+    scoreContainer.addEventListener('dblclick', function() {
+        if (confirm('Deseja zerar o placar?')) {
+            game.resetScore();
         }
     });
-
-    document.querySelectorAll('.extra-hours').forEach(cell => {
-        if (cell.textContent !== 'Folga') {
-            totalOvertimeMinutes += parseTime(cell.textContent);
+    
+    // Adiciona efeitos sonoros simples usando Web Audio API
+    const playSound = (frequency, duration) => {
+        try {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = frequency;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration);
+        } catch (e) {
+            // Navegador não suporta Web Audio API
         }
-    });
-
-    document.getElementById('totalWorked').textContent = formatTime(totalWorkedMinutes);
-    document.getElementById('totalOvertime').textContent = formatTime(totalOvertimeMinutes);
-    calculateEarnings();
-}
-
-function calculateEarnings() {
-    const monthlySalary = parseFloat(document.getElementById('monthlySalary').value) || 0;
-    const totalOvertimeMinutes = parseTime(document.getElementById('totalOvertime').textContent);
-    const hourlyRate = monthlySalary / (22 * 8); // Considerando 22 dias úteis
-    const overtimePay = (totalOvertimeMinutes / 60) * hourlyRate * 1.5;
-    const totalEarnings = monthlySalary + overtimePay;
-
-    document.getElementById('totalEarnings').textContent = `R$ ${totalEarnings.toFixed(2)}`;
-}
-
-function parseTime(time) {
-    const [hours, minutes] = time.split(':').map(Number);
-    return hours * 60 + minutes;
-}
-
-function formatTime(minutes) {
-    const hours = Math.floor(minutes / 60);
-    const mins = Math.floor(minutes % 60);
-    return `${padZero(hours)}:${padZero(mins)}:00`;
-}
-
-function padZero(value) {
-    return value < 10 ? '0' + value : value;
-}
-
-function exportToCSV() {
-    const table = document.getElementById('timeSheet');
-    const rows = Array.from(table.rows);
-    const csvContent = rows.map(row => {
-        const cells = Array.from(row.cells).map(cell => {
-            return `"${cell.textContent.trim().replace(/"/g, '""')}"`; // Escapa aspas
-        }).join(",");
-        return cells;
-    }).join("\n");
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'registro_de_ponto.csv';
-    link.click();
-}
-
-function importCSV(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function (e) {
-        const contents = e.target.result;
-        const rows = contents.split('\n');
-        const tableBody = document.getElementById('timeSheetBody');
-        tableBody.innerHTML = ''; // Limpa a tabela
-
-        rows.forEach(row => {
-            const cells = row.split(',');
-            const tr = document.createElement('tr');
-            cells.forEach(cell => {
-                const td = document.createElement('td');
-                td.textContent = cell.replace(/"/g, '');
-                tr.appendChild(td);
-            });
-            tableBody.appendChild(tr);
-        });
     };
-    reader.readAsText(file);
-}
+    
+    // Adiciona sons aos cliques
+    document.querySelectorAll('.cell').forEach(cell => {
+        cell.addEventListener('click', () => {
+            if (cell.textContent === '') {
+                playSound(800, 0.1);
+            }
+        });
+    });
+    
+    // Som de vitória
+    const originalMakeMove = game.makeMove.bind(game);
+    game.makeMove = function(index, cell) {
+        originalMakeMove(index, cell);
+        if (!this.gameActive && this.checkWinner()) {
+            setTimeout(() => playSound(1200, 0.3), 100);
+        }
+    };
+});
+
+// Adiciona suporte a teclado
+document.addEventListener('keydown', function(event) {
+    const keyMap = {
+        '1': 0, '2': 1, '3': 2,
+        '4': 3, '5': 4, '6': 5,
+        '7': 6, '8': 7, '9': 8
+    };
+    
+    const index = keyMap[event.key];
+    if (index !== undefined) {
+        const cell = document.querySelector(`[data-index="${index}"]`);
+        if (cell) {
+            cell.click();
+        }
+    }
+    
+    if (event.key === 'r' || event.key === 'R') {
+        document.getElementById('reset-btn').click();
+    }
+});
